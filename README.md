@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/webby.png?v=2" alt="Logo WebbyMaia" width="220" />
+  <img src="assets/webby.png?v=2" alt="Logo WebbyMaia" width="250" />
 </p>
 
 <hr />
