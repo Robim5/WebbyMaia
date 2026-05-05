@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 from datetime import date, datetime
 from typing import Any
 from urllib.parse import urljoin
@@ -118,6 +119,54 @@ def extrair_imagem_evento(soup: BeautifulSoup) -> str | None:
 
     return None
 
+# normaliza o preco
+def normalizar_preco(preco_texto: str | None, *, texto_extra: str | None = None) -> str | None:
+    """
+    - "gratuito" -> "Gratuito"
+    - 1 valor em € -> "X€"
+    - vários valores em € -> "Desde X€" (menor valor)
+    - vazio -> None
+    """
+    partes = []
+    if preco_texto:
+        partes.append(preco_texto)
+    if texto_extra:
+        partes.append(texto_extra)
+
+    bruto = "\n".join([p for p in partes if p]).strip()
+    if not bruto:
+        return None
+
+    if "gratuito" in bruto.lower():
+        return "Gratuito"
+
+    # Extrair valores do tipo 5.00 €, 5,00 €, 5 €
+    nums = re.findall(r"(\d+(?:[.,]\d+)?)\s*€", bruto)
+    if not nums:
+        return bruto  # fallback: devolve texto como está
+
+    valores = []
+    for n in nums:
+        n = n.replace(",", ".")
+        try:
+            valores.append(float(n))
+        except ValueError:
+            pass
+
+    if not valores:
+        return bruto
+
+    minimo = min(valores)
+    # Formatar: sem .00 se for inteiro
+    if abs(minimo - int(minimo)) < 1e-9:
+        minimo_fmt = f"{int(minimo)}€"
+    else:
+        minimo_fmt = f"{minimo:.2f}€"
+
+    if len(set(valores)) > 1:
+        return f"Desde {minimo_fmt}"
+    return minimo_fmt
+
 # parsea o html do evento
 def parse_evento_html(html: str, *, url_evento: str) -> dict[str, Any]:
     soup = BeautifulSoup(html, "lxml")
@@ -128,6 +177,9 @@ def parse_evento_html(html: str, *, url_evento: str) -> dict[str, Any]:
     imagem_url = extrair_imagem_evento(soup)
 
     data_inicio, data_fim = separar_intervalo_data(detalhes.get("Data"))
+
+    # em alguns eventos o preço vem vazio na tabela, mas existe no texto (ex: várias opções)
+    preco = normalizar_preco(detalhes.get("Preço"), texto_extra=soup.get_text("\n", strip=True))
 
     analise = detetar_categoria(
         titulo=titulo,
@@ -144,7 +196,7 @@ def parse_evento_html(html: str, *, url_evento: str) -> dict[str, Any]:
         "descricao": descricao,
         "imagem_url": imagem_url,
         "local": detalhes.get("Local"),
-        "preco": detalhes.get("Preço"),
+        "preco": preco,
         "categoria": analise["categoria"],
         "is_principal": False,
     }
