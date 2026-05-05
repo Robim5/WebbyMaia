@@ -1,0 +1,177 @@
+{
+    "eventos_2026": {
+      "março": [
+        {
+          "nome": "Maia International Acro Cup",
+          "datas": "04/03 a 08/03",
+          "local": "Complexo de Ginástica da Maia"
+        },
+        {
+          "nome": "Exposição De Obras de Paula Rego",
+          "datas": "14/03 a 03/05",
+          "local": "Fórum da Maia"
+        }
+      ],
+      "abril": [
+        {
+          "nome": "Festival Internacional de Cinema da Maia",
+          "datas": "29/04 a 02/05",
+          "local": "Fórum da Maia"
+        }
+      ],
+      "maio": [
+        {
+          "nome": "Bloom Convida Fatboy Slim // Open Air",
+          "datas": "01/05",
+          "local": "Parque de Avioso"
+        },
+        {
+          "nome": "Maia Fest Music",
+          "datas": "07/05 a 10/05",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "Fins de Semana Gastronómicos",
+          "datas": "08/05 a 10/05",
+          "local": "Restaurantes Aderentes"
+        },
+        {
+          "nome": "Corrida Fernanda Ribeiro",
+          "datas": "10/05",
+          "local": "Cidade da Maia"
+        },
+        {
+          "nome": "Wine & Classic's",
+          "datas": "15/05 a 17/05",
+          "local": "Quinta dos Cónegos"
+        },
+        {
+          "nome": "Maia BD",
+          "datas": "22/05 a 24/05",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "Maia Beer Market",
+          "datas": "22/05 a 24/05",
+          "local": "Jardim do Parque Central da Maia"
+        },
+        {
+          "nome": "Festival Faz-de-Conta",
+          "datas": "30/05 e 31/05",
+          "local": "Praça do Fórum"
+        }
+      ],
+      "junho": [
+        {
+          "nome": "North Music Festival",
+          "datas": "05/06 a 07/06",
+          "local": "Estádio Municipal"
+        },
+        {
+          "nome": "Air Invictus",
+          "datas": "19/06 a 21/06",
+          "local": "Aeródromo Municipal de Vilar de Luz"
+        },
+        {
+          "nome": "Maia Fest Music Outdoor",
+          "datas": "19/06 e 20/06",
+          "local": "Cidade Desportiva da Maia"
+        },
+        {
+          "nome": "Solstício Festival de Verão",
+          "datas": "21/06",
+          "local": "Cidade Desportiva da Maia"
+        },
+        {
+          "nome": "Bloom in the Park",
+          "datas": "27/06",
+          "local": "Parque de Avioso"
+        }
+      ],
+      "julho": [
+        {
+          "nome": "Festas da Maia",
+          "datas": "03/07 a 13/07",
+          "local": "Cidade da Maia"
+        },
+        {
+          "nome": "Feira de Artesanato",
+          "datas": "04/07 a 13/07",
+          "local": "Parque Central da Maia"
+        },
+        {
+          "nome": "Feira do Livro da Maia",
+          "datas": "04/07 a 13/07",
+          "local": "Praça do Fórum da Maia"
+        },
+        {
+          "nome": "Festival Panda",
+          "datas": "18/07 e 19/07",
+          "local": "Estádio Municipal"
+        },
+        {
+          "nome": "Maia Symphonic",
+          "datas": "18/07 e 19/07",
+          "local": "Praça Doutor José Vieira de Carvalho"
+        },
+        {
+          "nome": "Samba Weekend Maia",
+          "datas": "25/07 e 26/07",
+          "local": "Jardim do Parque Central da Maia"
+        }
+      ],
+      "setembro": [
+        {
+          "nome": "Maia Blues Fest",
+          "datas": "11/09 a 13/09",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "Bloom Festival",
+          "datas": "18/09 e 19/09",
+          "local": "Aeródromo Municipal de Vilar de Luz"
+        }
+      ],
+      "outubro": [
+        {
+          "nome": "Festival Internacional de Teatro Cómico da Maia",
+          "datas": "02/10 a 11/10",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "PowerExpo",
+          "datas": "03/10",
+          "local": "Complexo Municipal de Ténis"
+        }
+      ],
+      "novembro": [
+        {
+          "nome": "World Press Photo",
+          "datas": "07/11 a 01/12",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "Maia Natal",
+          "datas": "27/11 a 06/01/2027",
+          "local": "Praça Doutor José Vieira de Carvalho"
+        }
+      ],
+      "dezembro": [
+        {
+          "nome": "Festival Internacional de Magia da Maia",
+          "datas": "12/12 a 14/12",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "UIVO – Mostra de Ilustração da Maia",
+          "datas": "12/12 a 28/02/2027",
+          "local": "Fórum da Maia"
+        },
+        {
+          "nome": "Passagem de Ano",
+          "datas": "31/12",
+          "local": "Praça Doutor José Vieira de Carvalho"
+        }
+      ]
+    }
+  }

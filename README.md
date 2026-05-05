@@ -12,20 +12,21 @@
 
 ## Para que serve este projeto
 
-O **WebbyMaia** existe para uma coisa simples e útil: **juntar num só sítio os eventos públicos do Visit Maia**.Aqueles eventos que aparecem no calendário de [visitmaia.pt/eventos](https://visitmaia.pt/eventos) e queremos **guardá-los em JSON**, já com texto limpo e campos que podes consumir noutra app, num site, num bot ou num painel.
+O **WebbyMaia** existe para uma coisa simples e útil: **juntar num só sítio os eventos públicos do Visit Maia** e guardá-los numa **base de dados (Supabase/PostgreSQL)**, já com campos limpos e prontos a consumir noutra app, num site, num bot ou num painel.
 
-Não substitui o site oficial: **respeita a fonte** e só organiza a informação para quem precisa de dados estruturados (estudantes, associações, developers, curiosos com uma folha de cálculo à mão…).
+Não substitui o site oficial: **respeita a fonte** e só organiza a informação para quem precisa de dados estruturados (estudantes, associações, developers, curiosos...).
 
 ---
 
 ## O que faz?
 
-1. Abre a página dos eventos como um browser faria (porque o calendário vive de JavaScript).
-2. **Navega dia a dia** pelos próximos **30 dias**, como se estivesses a clicar em cada data.
-3. Para cada dia, recolhe os **links** dos cartões de evento.
-4. Visita **cada página de evento** (uma vez por URL, para não repetir trabalho).
-5. Extrai título, local, datas, preço, descrição, imagem e **sugere uma categoria** com regras de palavras-chave (`rules_cate.py`).
-6. Grava tudo em **`eventos.json`**, agrupado por data (`eventos_por_dia`).
+1. Vai buscar uma lista de URLs de eventos no site (sem browser).
+2. Visita **cada página de evento** (uma vez por URL, para não repetir trabalho).
+3. Extrai `titulo`, `url_evento`, `datas`, `local`, `preco`, `descricao`, `imagem_url`.
+4. Sugere uma **categoria** com regras de palavras-chave (`rules_cate.py`).
+5. Marca `is_principal=True` se o evento aparecer na agenda anual (`main_events_agenda.json`).
+6. Faz **upsert** no Supabase (cria ou atualiza pelo `url_evento` UNIQUE).
+7. Faz **auto-limpeza**: remove da BD eventos com `data_extracao` mais antiga que ~2 meses.
 
 É, na prática, uma **ponte** entre o calendário bonito do Visit Maia e o formato que máquinas adoram: chaves, listas e ISO dates no cabeçalho do ficheiro.
 
@@ -35,16 +36,18 @@ Não substitui o site oficial: **respeita a fonte** e só organiza a informaçã
 
 | Ficheiro        | Papel |
 |-----------------|-------|
-| `scrappy.py`    | Script Playwright: calendário → links → detalhes → JSON |
+| `main.py` | Script principal (Railway Cron Job): extrai → filtra → upsert → limpa → termina |
+| `scraper/` | Scraping sem browser (`httpx` + `BeautifulSoup`) |
+| `db/supabase_client.py` | Cliente Supabase + upsert + limpeza |
 | `rules_cate.py` | Regras simples para classificar eventos por palavras no texto |
-| `eventos.json`  | Saída gerada pelo script |
+| `main_events_agenda.json` | Agenda “principal” para marcar `is_principal=True` |
 
 ---
 
 ## Requisitos
 
 - Python 3.x
-- [Playwright](https://playwright.dev/python/) para Python (e browsers instalados com `playwright install`)
+- `httpx`, `beautifulsoup4`, `supabase`, `python-dotenv`
 
 ---
 
@@ -53,12 +56,73 @@ Não substitui o site oficial: **respeita a fonte** e só organiza a informaçã
 Na pasta do projeto:
 
 ```bash
-pip install playwright
-playwright install chromium
-python scrappy.py
+python -m venv .venv
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py
 ```
 
-O script abre o Chromium (visível por defeito), percorre os dias e no fim escreve `eventos.json`. Se quiseres correr às escuras, podes alterar em `scrappy.py` o `headless=False` para `headless=True`.
+O script imprime logs tipo:
+
+- `URLs recolhidos: N`
+- `Janela de datas: hoje -> +2 meses`
+- `Upsert concluído. Eventos enviados: N`
+- `Auto-limpeza concluída. Eventos apagados: X`
+
+Se ainda não tiveres variáveis do Supabase, ele faz **dry-run** (extrai dados e termina, sem gravar).
+
+---
+
+## Variáveis de ambiente (segurança)
+
+Cria um ficheiro `.env` (não comites; já está no `.gitignore`) com:
+
+```env
+SUPABASE_URL=https://<teu-projeto>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<a-tua-service-role-key>
+MAX_URLS=80
+```
+
+- `SUPABASE_SERVICE_ROLE_KEY`: usa **Service Role** porque isto corre no backend (Railway). Nunca usar esta chave em frontend.
+- `MAX_URLS` é opcional: serve para limitar quantos eventos processas e manter custos baixos.
+
+---
+
+## Como funciona o Upsert (em português simples)
+
+- A coluna `url_evento` na tabela `eventos` é **UNIQUE**.
+- Quando fazemos `upsert(..., on_conflict="url_evento")`:
+  - se a `url_evento` ainda não existir, cria um registo novo
+  - se já existir, atualiza o registo existente
+
+Resultado: podes correr o script todos os dias sem criar duplicados.
+
+---
+
+## Janela de scraping e retenção (2 meses)
+
+- O script **não está a tentar “procurar eventos passados”**.
+- Ele guarda eventos **de hoje até ~2 meses à frente**.
+- E faz **auto-limpeza** na BD: qualquer evento com `data_extracao` mais antiga que ~2 meses é apagado.
+
+Exemplo: se um evento foi extraído hoje, ele “expira” na BD daqui a ~2 meses (aprox. 60 dias).
+
+---
+
+## Deploy no Railway (Cron Job)
+
+1. Liga o projeto ao GitHub no Railway.
+2. Em **Variables**, adiciona:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - (opcional) `MAX_URLS`
+3. Em **Start Command**, usa: `python main.py`
+4. Em **Settings → Cron Schedule**, usa por exemplo:
+   - `0 6 * * *` (todos os dias às 06:00 UTC)
+5. Confirma nos logs que aparece:
+   - `Upsert concluído...`
+   - `Auto-limpeza concluída...`
 
 ---
 
@@ -74,7 +138,7 @@ O conceito principal é um "W" de Webby, construído com a paleta de cores que m
 
 ## Nota importante
 
-Web scraping depende do layout do site: se o Visit Maia mudar classes HTML ou o calendário, pode ser preciso ajustar selectores em `scrappy.py`. Usa os dados com bom senso e **em linha com os termos do site** que estás a ler.
+Web scraping depende do layout do site: se o Visit Maia mudar HTML, pode ser preciso ajustar selectores no `scraper/parse.py`. Usa os dados com bom senso e **em linha com os termos do site** que estás a ler.
 
 ---
 

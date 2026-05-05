@@ -1,0 +1,172 @@
+from __future__ import annotations
+from datetime import date, datetime
+from typing import Any
+from urllib.parse import urljoin
+from bs4 import BeautifulSoup
+from rules_cate import detetar_categoria
+
+# url base do site
+BASE_URL = "https://visitmaia.pt"
+
+# normaliza o url
+def normalizar_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    return urljoin(BASE_URL, url)
+
+# extrai o texto do elemento
+def texto_ou_none(elemento) -> str | None:
+    if not elemento:
+        return None
+    texto = elemento.get_text(" ", strip=True)
+    return texto or None
+
+# extrai os detalhes do evento
+def extrair_tabela_detalhes(soup: BeautifulSoup) -> dict[str, str | None]:
+    detalhes: dict[str, str | None] = {}
+
+    for linha in soup.select("table tr"):
+        colunas = linha.find_all("td")
+        if len(colunas) >= 2:
+            chave = colunas[0].get_text(" ", strip=True)
+            valor = colunas[1].get_text(" ", strip=True)
+            if chave:
+                detalhes[chave] = valor or None
+
+    return detalhes
+
+# tenta converter a data para ISO
+def _try_parse_date_iso(value: str) -> str | None:
+    try:
+        return datetime.strptime(value.strip(), "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return None
+
+# converte a data para ISO
+def converter_data_pt(data_texto: str | None, *, ano_default: int | None = None) -> str | None:
+    if not data_texto:
+        return None
+
+    raw = data_texto.strip()
+    if not raw:
+        return None
+
+    iso = _try_parse_date_iso(raw)
+    if iso:
+        return iso
+
+    ano = ano_default or date.today().year
+
+    for formato in ("%d/%m/%Y", "%d/%m"):
+        try:
+            dt = datetime.strptime(raw, formato)
+            if formato == "%d/%m":
+                dt = dt.replace(year=ano)
+            return dt.date().isoformat()
+        except ValueError:
+            pass
+
+    return None
+
+# separa o intervalo de data
+def separar_intervalo_data(data_texto: str | None, *, ano_default: int | None = None) -> tuple[str | None, str | None]:
+    if not data_texto:
+        return None, None
+
+    raw = data_texto.strip()
+    if not raw:
+        return None, None
+
+    if " a " in raw:
+        inicio_raw, fim_raw = raw.split(" a ", 1)
+    else:
+        inicio_raw = fim_raw = raw
+
+    return (
+        converter_data_pt(inicio_raw, ano_default=ano_default),
+        converter_data_pt(fim_raw, ano_default=ano_default),
+    )
+
+# extrai o titulo do evento
+def extrair_titulo_evento(soup: BeautifulSoup) -> str | None:
+    return texto_ou_none(soup.find("h4"))
+
+# extrai a descricao do evento
+def extrair_descricao_evento(soup: BeautifulSoup) -> str | None:
+    h4 = soup.find("h4")
+    if not h4:
+        return None
+    return texto_ou_none(h4.find_next("p"))
+
+# extrai a imagem do evento
+def extrair_imagem_evento(soup: BeautifulSoup) -> str | None:
+    # Heurística simples: a página tem imagens, mas normalmente a do evento está cedo no DOM.
+    img = soup.find("img")
+    if not img:
+        return None
+    return normalizar_url(img.get("src"))
+
+# parsea o html do evento
+def parse_evento_html(html: str, *, url_evento: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "lxml")
+
+    titulo = extrair_titulo_evento(soup)
+    detalhes = extrair_tabela_detalhes(soup)
+    descricao = extrair_descricao_evento(soup)
+    imagem_url = extrair_imagem_evento(soup)
+
+    data_inicio, data_fim = separar_intervalo_data(detalhes.get("Data"))
+
+    analise = detetar_categoria(
+        titulo=titulo,
+        descricao=descricao,
+        local=detalhes.get("Local"),
+        mais_informacoes=detalhes.get("Mais informações"),
+    )
+
+    return {
+        "titulo": titulo,
+        "url_evento": url_evento,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "descricao": descricao,
+        "imagem_url": imagem_url,
+        "local": detalhes.get("Local"),
+        "preco": detalhes.get("Preço"),
+        "categoria": analise["categoria"],
+        "is_principal": False,
+    }
+
+# parsea o url do evento
+def parse_evento_url(html: str) -> str | None:
+    soup = BeautifulSoup(html, "lxml")
+    canonical = soup.find("link", rel="canonical")
+    if canonical and canonical.get("href"):
+        return normalizar_url(canonical.get("href"))
+    return None
+
+# extrai os urls dos eventos da listagem
+def extrair_urls_eventos_de_listagem(html: str) -> list[str]:
+    soup = BeautifulSoup(html, "lxml")
+    urls: list[str] = []
+    seen: set[str] = set()
+
+    for a in soup.select("a[href]"):
+        href = normalizar_url(a.get("href"))
+        if not href:
+            continue
+        if "/eventos/" not in href:
+            continue
+
+        # Evitar URLs irrelevantes tipo /eventos (lista) e âncoras.
+        if href.rstrip("/") == f"{BASE_URL}/eventos":
+            continue
+
+        # Evitar duplicados.
+        if href in seen:
+            continue
+        seen.add(href)
+        urls.append(href)
+
+    return urls
+
