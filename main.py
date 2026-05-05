@@ -35,15 +35,16 @@ def main() -> None:
     max_urls_raw = os.getenv("MAX_URLS")
     max_urls = int(max_urls_raw) if max_urls_raw and max_urls_raw.isdigit() else None
 
-    urls = recolher_urls_eventos(limit=max_urls)
-    print(f"URLs recolhidos: {len(urls)}")
-
     hoje = date.today()
     # nao procuramos eventos passados
     # busca eventos de agora até +2 meses, mantem 2 meses e depois limpa
     janela_inicio = hoje
     janela_fim = hoje + timedelta(days=60)  # 2 meses frente
     print(f"Janela de datas: {janela_inicio.isoformat()} -> {janela_fim.isoformat()}")
+
+    # a fonte principal é a API do calendário (muito mais completa que o HTML estático)
+    urls = recolher_urls_eventos(limit=max_urls, inicio=janela_inicio, fim=janela_fim)
+    print(f"URLs recolhidos (calendário/API): {len(urls)}")
 
     eventos = []
     for i, url in enumerate(urls, start=1):
