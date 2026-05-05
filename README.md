@@ -20,26 +20,49 @@ Não substitui o site oficial: **respeita a fonte** e só organiza a informaçã
 
 ## O que faz?
 
-1. Vai buscar uma lista de URLs de eventos no site (sem browser).
+1. Vai buscar uma lista de URLs de eventos no site (sem browser), usando a **API do calendário** (`/api/aapillevents`).
 2. Visita **cada página de evento** (uma vez por URL, para não repetir trabalho).
-3. Extrai `titulo`, `url_evento`, `datas`, `local`, `preco`, `descricao`, `imagem_url`.
-4. Sugere uma **categoria** com regras de palavras-chave (`rules_cate.py`).
+3. Extrai `titulo`, `url_evento`, `datas`, `local`, `preco`, `descricao`, `imagem_url` (com heurística para escolher a **imagem certa** do evento, ver documentação).
+4. Atribui **categoria** com `rules_cate.py` (palavras-chave, desempates e **overrides por título** quando necessário).
 5. Marca `is_principal=True` se o evento aparecer na agenda anual (`main_events_agenda.json`).
 6. Faz **upsert** no Supabase (cria ou atualiza pelo `url_evento` UNIQUE).
 7. Faz **auto-limpeza**: remove da BD eventos com `data_extracao` mais antiga que ~2 meses.
 
-É, na prática, uma **ponte** entre o calendário bonito do Visit Maia e o formato que máquinas adoram: chaves, listas e ISO dates no cabeçalho do ficheiro.
+Além disso, o projeto inclui uma **interface web** em Flask (`web/`) que lê o Supabase e mostra a listagem com filtros, **18 eventos por página**, paginação compacta (`<` · `1/N` · `>`) e página de detalhe.
+
+É, na prática, uma **ponte** entre o calendário bonito do Visit Maia e o formato que máquinas adoram: chaves, listas e ISO dates no cabeçalho do ficheiro — com opção de ver tudo num browser.
+
+---
+
+## Atualizações recentes (resumo)
+
+- **Imagens:** parser a pontuar candidatos no HTML (evita `og:image` ou primeira `<img>` erradas entre eventos).
+- **Categorias:** Institucional mais restrito; desempate entre categorias; overrides por título para casos limite.
+- **Web:** tema cinzento-azulado / azul escuro / verde escuro, layout responsivo, logo em `web/static/webby.png`.
+- **Documentação:** [`documentation/webbyDoc.md`](documentation/webbyDoc.md) (backend / BD), [`documentation/webbyWebDoc.md`](documentation/webbyWebDoc.md) (frontend).
+
+---
+
+## Interface web (espaço para captura de ecrã)
+
+
+<p align="center">
+  <img src="assets/displayFront.png" alt="WebbyMaia - Interface web com listagem de eventos" width="920" />
+</p>
+
+**Correr a interface:** `python -m web.app` (requer `.env` com Supabase, veja a secção de variáveis de ambiente).
 
 ---
 
 ## Ficheiros principais
 
-| Ficheiro        | Papel |
-|-----------------|-------|
+| Ficheiro / pasta | Papel |
+|------------------|-------|
 | `main.py` | Script principal (Railway Cron Job): extrai → filtra → upsert → limpa → termina |
 | `scraper/` | Scraping sem browser (`httpx` + `BeautifulSoup`) |
-| `db/supabase_client.py` | Cliente Supabase + upsert + limpeza |
-| `rules_cate.py` | Regras simples para classificar eventos por palavras no texto |
+| `db/supabase_client.py` | Cliente Supabase: upsert, limpeza, leitura para a web |
+| `rules_cate.py` | Categorização (regras, desempates, overrides por título) |
+| `web/` | App Flask: listagem, filtros, paginação, detalhe do evento |
 | `main_events_agenda.json` | Agenda “principal” para marcar `is_principal=True` |
 
 ---
@@ -47,7 +70,7 @@ Não substitui o site oficial: **respeita a fonte** e só organiza a informaçã
 ## Requisitos
 
 - Python 3.x
-- `httpx`, `beautifulsoup4`, `supabase`, `python-dotenv`
+- `httpx`, `beautifulsoup4`, `lxml`, `supabase`, `python-dotenv`, `flask`, `gunicorn` (ver `requirements.txt`)
 
 ---
 
@@ -63,14 +86,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
-O script imprime logs tipo:
+Para **só ver os eventos no browser** (lê o Supabase):
 
-- `URLs recolhidos: N`
+```bash
+python -m web.app
+```
+
+O script `main.py` imprime logs tipo:
+
+- `URLs recolhidos (calendário/API): N`
 - `Janela de datas: hoje -> +2 meses`
 - `Upsert concluído. Eventos enviados: N`
 - `Auto-limpeza concluída. Eventos apagados: X`
 
-Se ainda não tiveres variáveis do Supabase, ele faz **dry-run** (extrai dados e termina, sem gravar).
+Se ainda não tiveres variáveis do Supabase, ele faz **dry-run** (extrai dados e termina, sem gravar). A app web **precisa** do Supabase configurado para listar dados.
 
 ---
 
@@ -89,24 +118,25 @@ MAX_URLS=80
 
 ---
 
-## Como funciona o Upsert (em português simples)
-
-- A coluna `url_evento` na tabela `eventos` é **UNIQUE**.
-- Quando fazemos `upsert(..., on_conflict="url_evento")`:
-  - se a `url_evento` ainda não existir, cria um registo novo
-  - se já existir, atualiza o registo existente
-
-Resultado: podes correr o script todos os dias sem criar duplicados.
-
----
-
 ## Janela de scraping e retenção (2 meses)
 
-- O script **não está a tentar “procurar eventos passados”**.
+- O script **não está a tentar procurar eventos passados**.
 - Ele guarda eventos **de hoje até ~2 meses à frente**.
 - E faz **auto-limpeza** na BD: qualquer evento com `data_extracao` mais antiga que ~2 meses é apagado.
 
 Exemplo: se um evento foi extraído hoje, ele “expira” na BD daqui a ~2 meses (aprox. 60 dias).
+
+---
+
+## Regras do campo `preco`
+
+O site às vezes mostra preços como texto longo ou várias opções. Para manter a BD limpa, gravamos:
+
+- Se o texto contiver **“Gratuito”** → `Gratuito`
+- Se o texto contiver **“Sob consulta”** → `Sob Consulta`
+- Se tiver **1 valor em €** → `X€` (ex: `30€`)
+- Se tiver **vários valores em €** → `Desde X€` (usa o menor, ex: `Desde 5€`)
+- Se não houver nenhum valor claro em € → `Sob Consulta`
 
 ---
 
@@ -128,7 +158,7 @@ Exemplo: se um evento foi extraído hoje, ele “expira” na BD daqui a ~2 mese
 
 ## Sobre a logo 
 
-O logótipo foi desenhado por mim (Robim) utilizando o [Canva](https://www.canva.com/). 
+O logótipo foi desenhado por mim (Robim) utilizando o [Canva](https://www.canva.com/). O ficheiro fonte está em `assets/webby.png`; para a interface Flask usa-se também uma cópia em `web/static/webby.png` (servida como ficheiro estático).
 
 O conceito principal é um "W" de Webby, construído com a paleta de cores que melhor caracteriza a cidade da Maia:
 

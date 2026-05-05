@@ -53,3 +53,26 @@ def limpar_eventos_antigos(*, retention_days: int = 60) -> int:
     if isinstance(data, list):
         return len(data)
     return 0
+
+# lista eventos com filtros opcionais
+def listar_eventos(*, limit: int = 200, categoria: str | None = None, q: str | None = None, principal: bool | None = None):
+    supabase = get_supabase_client()
+    query = supabase.table("eventos").select("*")
+    
+    if categoria:
+        query = query.eq("categoria", categoria)
+    if principal is True:
+        query = query.eq("is_principal", True)
+    if q: 
+        # ilike para pesquisar texto (depende do schema é rubusto)
+        query = query.ilike("titulo", f"%{q}%")
+        
+    resp = query.order("data_inicio", desc=False).limit(limit).execute()
+    data = getattr(resp, "data", None)
+    return data or []
+
+# obtem evento por url_evento
+def obter_evento_por_url_evento(url_evento: str):
+    supabase = get_supabase_client()
+    resp = supabase.table("eventos").select("*").eq("url_evento", url_evento).maybe_single().execute()
+    return getattr(resp, "data", None)

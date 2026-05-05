@@ -105,19 +105,77 @@ def extrair_descricao_evento(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def extrair_imagem_evento(soup: BeautifulSoup) -> str | None:
-    og = soup.find("meta", property="og:image")
-    if og and og.get("content"):
-        return normalizar_url(og["content"])
+def _cadeia_ascendentes(elem, profundidade: int = 12) -> str:
+    """ texto com classes/ids dos ascendentes -> para detetar sidebar, header, etc"""
+    partes: list[str] = []
+    p = elem
+    for _ in range(profundidade):
+        if not p or not getattr(p, "name", None):
+            break
+        cls = " ".join(p.get("class") or []).lower()
+        eid = (p.get("id") or "").lower()
+        partes.append(f"{p.name.lower()}:{cls}:{eid}")
+        p = p.parent
+    return " ".join(partes)
 
-    for img in soup.find_all("img"):
+
+def _pontuar_imagem_evento(img, soup: BeautifulSoup) -> int:
+    """ prioriza imagens do bloco do evento (perto do título, fora de sidebar/footer) """
+    score = 0
+    chain = _cadeia_ascendentes(img)
+    if any(x in chain for x in ("sidebar", "widget", "cookie", "modal", "menu")):
+        score -= 8
+    if "footer" in chain:
+        score -= 5
+    if any(x in chain for x in ("header", "navbar", "nav-bar", "topbar")):
+        score -= 3
+    if any(x in chain for x in ("content", "main", "article", "detail", "event", "hero", "banner")):
+        score += 4
+    h4 = soup.find("h4")
+    if h4:
+        # imagem típica do evento vem depois do título na página de detalhe
+        for prev in img.find_all_previous(limit=80):
+            if prev is h4:
+                score += 6
+                break
+            if getattr(prev, "name", None) == "h4":
+                break
+    try:
+        w = int(img.get("width") or 0)
+        h = int(img.get("height") or 0)
+        if w and h and w < 72 and h < 72:
+            score -= 4
+    except (TypeError, ValueError):
+        pass
+    return score
+
+
+def extrair_imagem_evento(soup: BeautifulSoup) -> str | None:
+    candidatos: list[tuple[int, str]] = []
+
+    for img in soup.select('img[src*="assets/images/events"]'):
         src = (img.get("src") or "").strip()
         if not src:
             continue
-        if "/assets/images/events/" in src:
-            return normalizar_url(src)
+        full = normalizar_url(src)
+        if not full:
+            continue
+        candidatos.append((_pontuar_imagem_evento(img, soup), full))
 
-    return None
+    og = soup.find("meta", property="og:image")
+    if og and og.get("content"):
+        og_src = (og.get("content") or "").strip()
+        if "/assets/images/events/" in og_src:
+            full = normalizar_url(og_src)
+            if full:
+                # og:image costuma ser genérico ou desatualizado; só entra se for asset de evento
+                candidatos.append((-1, full))
+
+    if not candidatos:
+        return None
+
+    candidatos.sort(key=lambda t: t[0], reverse=True)
+    return candidatos[0][1]
 
 # normaliza o preco
 def normalizar_preco(preco_texto: str | None, *, texto_extra: str | None = None) -> str | None:

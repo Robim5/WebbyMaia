@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ ev.titulo or "Evento" }} | WebbyMaia{% endblock %}
+
+{% block content %}
+  <a class="link" href="/">← voltar</a>
+
+  <div class="card evento-card">
+    {% if ev.imagem_url %}
+      <img src="{{ ev.imagem_url }}" alt="" class="thumb evento-thumb" loading="lazy" />
+    {% endif %}
+
+    <div class="card-body evento-card-body">
+      <div class="title-row">
+        <h1 class="evento-title">{{ ev.titulo or "(Sem título)" }}</h1>
+        {% if ev.is_principal %}
+          <span class="badge">principal</span>
+        {% endif %}
+      </div>
+
+      <div class="meta evento-meta">
+        <div><b>Data:</b> {{ ev.data_inicio or "?" }}{% if ev.data_fim and ev.data_fim != ev.data_inicio %} → {{ ev.data_fim }}{% endif %}</div>
+        {% if ev.local %}<div><b>Local:</b> {{ ev.local }}</div>{% endif %}
+        {% if ev.preco %}<div><b>Preço:</b> {{ ev.preco }}</div>{% endif %}
+        {% if ev.categoria %}<div><b>Categoria:</b> {{ ev.categoria }}</div>{% endif %}
+      </div>
+
+      {% if ev.descricao %}
+        <p class="evento-description">{{ ev.descricao }}</p>
+      {% endif %}
+
+      <div class="row evento-actions">
+        {% if ev.url_evento %}
+          <a class="btn" href="{{ ev.url_evento }}" target="_blank" rel="noreferrer">Abrir no VisitMaia</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

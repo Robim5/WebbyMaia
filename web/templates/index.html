@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Eventos | WebbyMaia{% endblock %}
+
+{% block content %}
+  <form class="form" method="get" action="/">
+    <div class="field">
+      <div class="label">Pesquisar</div>
+      <input class="input" name="q" placeholder="Pesquisar por título..." value="{{ q }}" />
+    </div>
+    <div class="field">
+      <div class="label">Categoria</div>
+      <select class="input" name="categoria" title="Selecione uma categoria">
+        <option value="" {% if not categoria %}selected{% endif %}>Todas as Categorias</option>
+        <option value="Cultura" {% if categoria == 'Cultura' %}selected{% endif %}>Cultura</option>
+        <option value="Turismo" {% if categoria == 'Turismo' %}selected{% endif %}>Turismo</option>
+        <option value="Desporto" {% if categoria == 'Desporto' %}selected{% endif %}>Desporto</option>
+        <option value="Juventude" {% if categoria == 'Juventude' %}selected{% endif %}>Juventude</option>
+        <option value="Educação" {% if categoria == 'Educação' %}selected{% endif %}>Educação</option>
+        <option value="Institucional" {% if categoria == 'Institucional' %}selected{% endif %}>Institucional</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="label">Principal</div>
+      <label class="check">
+        <input type="checkbox" name="principal" value="1" {% if principal == "1" %}checked{% endif %} />
+        <span class="muted">Só principais</span>
+      </label>
+    </div>
+    <div class="row">
+      <button class="btn" type="submit">Aplicar</button>
+      <a class="link" href="/">Limpar</a>
+    </div>
+  </form>
+
+  <div class="muted">Total: <b>{{ total_eventos }}</b></div>
+
+  <div class="grid cols-2">
+    {% for ev in eventos %}
+      <article class="card">
+        {% if ev.imagem_url %}
+          <img src="{{ ev.imagem_url }}" alt="" class="thumb" loading="lazy" />
+        {% else %}
+          <div class="thumb"></div>
+        {% endif %}
+
+        <div class="card-body">
+          <div class="title-row">
+            <h2 class="title">{{ ev.titulo or "(Sem título)" }}</h2>
+            {% if ev.is_principal %}
+              <span class="badge">principal</span>
+            {% endif %}
+          </div>
+
+          <div class="meta">
+            <div><b>Data:</b> {{ ev.data_inicio or "?" }}{% if ev.data_fim and ev.data_fim != ev.data_inicio %} → {{ ev.data_fim }}{% endif %}</div>
+            {% if ev.local %}<div><b>Local:</b> {{ ev.local }}</div>{% endif %}
+            {% if ev.preco %}<div><b>Preço:</b> {{ ev.preco }}</div>{% endif %}
+            {% if ev.categoria %}<div><b>Categoria:</b> {{ ev.categoria }}</div>{% endif %}
+          </div>
+
+          <div class="actions">
+            <a class="btn" href="/evento?url={{ ev.url_evento|urlencode }}">Ver detalhes</a>
+            {% if ev.url_evento %}
+              <a class="link" href="{{ ev.url_evento }}" target="_blank" rel="noreferrer">Abrir fonte</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+
+  {% if total_pages > 1 %}
+  <nav class="pagination" aria-label="Paginação de eventos">
+    <div class="pagination-bar">
+      {% if page > 1 %}
+        <a class="pagination-arrow" href="?q={{ q|urlencode }}&categoria={{ categoria|urlencode }}&principal={{ principal or '' }}&page={{ page - 1 }}" aria-label="Página anterior">&lt;</a>
+      {% else %}
+        <span class="pagination-arrow is-disabled" aria-hidden="true">&lt;</span>
+      {% endif %}
+      <span class="pagination-indicator">{{ page }}/{{ total_pages }}</span>
+      {% if page < total_pages %}
+        <a class="pagination-arrow" href="?q={{ q|urlencode }}&categoria={{ categoria|urlencode }}&principal={{ principal or '' }}&page={{ page + 1 }}" aria-label="Página seguinte">&gt;</a>
+      {% else %}
+        <span class="pagination-arrow is-disabled" aria-hidden="true">&gt;</span>
+      {% endif %}
+    </div>
+  </nav>
+  {% endif %}
+{% endblock %}

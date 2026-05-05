@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}WebbyMaia{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a href="/" class="brand">
+          <img
+            src="{{ url_for('static', filename='webby.png') }}"
+            alt=""
+            class="logo"
+            width="48"
+            height="48"
+            decoding="async"
+          />
+          <div class="brand-text">
+            <div class="brand-title">WebbyMaia</div>
+            <div class="brand-sub">Eventos guardados na base de dados</div>
+          </div>
+        </a>
+      </div>
+    </header>
+
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
