@@ -140,10 +140,15 @@ def normalizar_preco(preco_texto: str | None, *, texto_extra: str | None = None)
     if "gratuito" in bruto.lower():
         return "Gratuito"
 
+    # se o site indicar sob consulta não vale a pena inventar preço.
+    if "sob consulta" in bruto.lower():
+        return "Sob Consulta"
+
     # Extrair valores do tipo 5.00 €, 5,00 €, 5 €
     nums = re.findall(r"(\d+(?:[.,]\d+)?)\s*€", bruto)
     if not nums:
-        return bruto  # fallback: devolve texto como está
+        # se não há nenhum valor em € ou gratuito
+        return "Sob Consulta"
 
     valores = []
     for n in nums:
