@@ -91,20 +91,32 @@ def separar_intervalo_data(data_texto: str | None, *, ano_default: int | None = 
 def extrair_titulo_evento(soup: BeautifulSoup) -> str | None:
     return texto_ou_none(soup.find("h4"))
 
-# extrai a descricao do evento
 def extrair_descricao_evento(soup: BeautifulSoup) -> str | None:
     h4 = soup.find("h4")
     if not h4:
         return None
-    return texto_ou_none(h4.find_next("p"))
 
-# extrai a imagem do evento
+    for p in h4.find_next_siblings("p"):
+        texto = p.get_text(" ", strip=True)
+        if texto:
+            return texto
+
+    return None
+
+
 def extrair_imagem_evento(soup: BeautifulSoup) -> str | None:
-    # Heurística simples: a página tem imagens, mas normalmente a do evento está cedo no DOM.
-    img = soup.find("img")
-    if not img:
-        return None
-    return normalizar_url(img.get("src"))
+    og = soup.find("meta", property="og:image")
+    if og and og.get("content"):
+        return normalizar_url(og["content"])
+
+    for img in soup.find_all("img"):
+        src = (img.get("src") or "").strip()
+        if not src:
+            continue
+        if "/assets/images/events/" in src:
+            return normalizar_url(src)
+
+    return None
 
 # parsea o html do evento
 def parse_evento_html(html: str, *, url_evento: str) -> dict[str, Any]:
