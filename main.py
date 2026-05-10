@@ -6,6 +6,7 @@ from scraper.main_agenda import carregar_titulos_principais, marcar_evento_princ
 from scraper.parse import parse_evento_html
 from scraper.source import recolher_urls_eventos
 from db.supabase_client import limpar_eventos_antigos, upsert_eventos
+from web.app import app 
 
 # converte data ISO para date
 def _parse_iso_date(value: str | None) -> date | None:
