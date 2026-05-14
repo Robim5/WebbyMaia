@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Notícias | WebbyMaia{% endblock %}
+
+{% block content %}
+  <form class="form" method="get" action="/noticias">
+    <div class="field">
+      <div class="label">Categoria</div>
+      <select class="input" name="categoria" title="Selecione uma categoria">
+        <option value="" {% if not categoria %}selected{% endif %}>Todas</option>
+        <option value="Cultura" {% if categoria == 'Cultura' %}selected{% endif %}>Cultura</option>
+        <option value="Voluntariado" {% if categoria == 'Voluntariado' %}selected{% endif %}>Voluntariado</option>
+        <option value="Solidariedade" {% if categoria == 'Solidariedade' %}selected{% endif %}>Solidariedade</option>
+        <option value="Educacao" {% if categoria == 'Educacao' %}selected{% endif %}>Educacao</option>
+        <option value="Institucional" {% if categoria == 'Institucional' %}selected{% endif %}>Institucional</option>
+        <option value="Turismo" {% if categoria == 'Turismo' %}selected{% endif %}>Turismo</option>
+        <option value="Desporto" {% if categoria == 'Desporto' %}selected{% endif %}>Desporto</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="btn" type="submit">Filtrar</button>
+      <a class="link" href="/noticias">Limpar</a>
+    </div>
+  </form>
+
+  <div class="muted">Últimas <b>{{ noticias|length }}</b> notícias</div>
+
+  <div class="grid cols-2">
+    {% for n in noticias %}
+      <article class="card">
+        {% if n.imagem_url %}
+          <img src="{{ n.imagem_url }}" alt="" class="thumb" loading="lazy" />
+        {% else %}
+          <div class="thumb"></div>
+        {% endif %}
+
+        <div class="card-body">
+          <div class="title-row">
+            <h2 class="title">{{ n.titulo or "(Sem título)" }}</h2>
+            {% if n.destaque %}
+              <span class="badge">destaque</span>
+            {% endif %}
+          </div>
+
+          <div class="meta">
+            {% if n.data_publicacao %}<div><b>Data:</b> {{ n.data_publicacao }}</div>{% endif %}
+            {% if n.categoria %}<div><b>Categoria:</b> {{ n.categoria }}</div>{% endif %}
+            {% if n.autor %}<div><b>Autor:</b> {{ n.autor }}</div>{% endif %}
+            {% if n.tempo_leitura %}<div><b>Leitura:</b> {{ n.tempo_leitura }}</div>{% endif %}
+          </div>
+
+          {% if n.resumo %}
+            <p class="muted">{{ n.resumo }}</p>
+          {% endif %}
+
+          <div class="actions">
+            {% if n.url_noticia %}
+              <a class="btn" href="{{ n.url_noticia }}" target="_blank" rel="noreferrer">Abrir notícia</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% endblock %}

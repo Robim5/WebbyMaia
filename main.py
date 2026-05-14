@@ -7,6 +7,8 @@ from scraper.parse import parse_evento_html
 from scraper.source import recolher_urls_eventos
 from db.supabase_client import limpar_eventos_antigos, upsert_eventos
 from web.app import app 
+from scraper.news.source import recolher_noticias_recentes
+from db.supabase_client import sincronizar_noticias
 
 # converte data ISO para date
 def _parse_iso_date(value: str | None) -> date | None:
@@ -78,6 +80,24 @@ def main() -> None:
         print(f"Upsert ignorado (falta de .env/vars no Railway secalhar): {erro}")
         print(f"Dry-run OK. Eventos extraídos: {len(eventos)}")
 
+def main_noticias() -> None:
+    print("--- Notícias CM Maia ---")
+    noticias = recolher_noticias_recentes(limit=5)
+
+    for i, n in enumerate(noticias, start=1):
+        print(
+            f"[noticia {i}/5] {n.get('titulo')} | "
+            f"{n.get('data_publicacao')} | {n.get('categoria')}"
+        )
+
+    try:
+        total = sincronizar_noticias(noticias)
+        print(f"Notícias sincronizadas: {total}")
+    except Exception as erro:
+        print(f"Notícias ignoradas (falta .env/Supabase): {erro}")
+        print(f"Dry-run notícias OK. Extraídas: {len(noticias)}")
 
 if __name__ == "__main__":
     main()
+    main_noticias()
+

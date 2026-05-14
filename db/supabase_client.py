@@ -76,3 +76,30 @@ def obter_evento_por_url_evento(url_evento: str):
     supabase = get_supabase_client()
     resp = supabase.table("eventos").select("*").eq("url_evento", url_evento).maybe_single().execute()
     return getattr(resp, "data", None)
+
+def sincronizar_noticias(noticias: list[dict[str, Any]], *, on_conflict: str = "url_noticia") -> int:
+    """ guarda as 5 noticias e apaga qualquer outra que ja nao esteja no top 5 """
+    if not noticias:
+        return 0
+
+    supabase = get_supabase_client()
+    urls = [n["url_noticia"] for n in noticias]
+
+    supabase.table("noticias").upsert(noticias, on_conflict=on_conflict).execute()
+
+    if urls:
+        supabase.table("noticias").delete().not_.in_("url_noticia", urls).execute()
+
+    return len(noticias)
+
+def listar_noticias(*, limit: int = 5, categoria: str | None = None) -> list[dict]:
+    supabase = get_supabase_client()
+    query = supabase.table("noticias").select("*")
+
+    if categoria:
+        query = query.eq("categoria", categoria)
+
+    resp = query.order("data_publicacao", desc=True).limit(limit).execute()
+    data = getattr(resp, "data", None)
+    return data or []
+

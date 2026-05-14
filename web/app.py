@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, abort
 from db.supabase_client import listar_eventos, obter_evento_por_url_evento
+from db.supabase_client import listar_eventos, obter_evento_por_url_evento, listar_noticias
 
 app = Flask(__name__)
 
@@ -25,6 +26,12 @@ def index():
     eventos = eventos_all[start_idx:end_idx]
 
     return render_template("index.html", eventos=eventos, q=q if q else "", categoria=categoria if categoria else "", principal=principal, page=page, total_pages=total_pages, total_eventos=total_eventos)
+
+@app.get("/noticias")
+def noticias():
+    categoria = request.args.get("categoria")
+    items = listar_noticias(limit=5, categoria=categoria or None)
+    return render_template("noticias.html", noticias=items, categoria=categoria or "")
 
 @app.get("/evento")
 def evento():
