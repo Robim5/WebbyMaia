@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import calendar
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date
 from typing import Any
 
 from dotenv import load_dotenv
@@ -22,6 +23,16 @@ def get_supabase_client() -> Client:
 
     return create_client(url, key)
 
+
+def add_calendar_months(d: date, months: int) -> date:
+    """ soma meses de calendário a uma data (ajusta o dia ao fim do mês destino) """
+    m0 = d.month - 1 + months
+    y = d.year + m0 // 12
+    m = m0 % 12 + 1
+    last = calendar.monthrange(y, m)[1]
+    return date(y, m, min(d.day, last))
+
+
 # insere ou atualiza os eventos na tabela
 def upsert_eventos(eventos: list[dict[str, Any]], *, on_conflict: str = "url_evento") -> int:
     if not eventos:
@@ -36,16 +47,18 @@ def upsert_eventos(eventos: list[dict[str, Any]], *, on_conflict: str = "url_eve
     return len(eventos)
 
 
-# auto-limpeza -> apaga registos com data_extracao mais antiga que retention_days
-def limpar_eventos_antigos(*, retention_days: int = 60) -> int:
+# auto-limpeza -> apaga eventos cuja data_inicio cai em meses demasiado antigos (4 meses)
+def limpar_eventos_antigos(*, meses_passados_a_manter: int = 4) -> int:
     supabase = get_supabase_client()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    hoje = date.today()
+    inicio_mes_atual = date(hoje.year, hoje.month, 1)
+    cutoff = add_calendar_months(inicio_mes_atual, -meses_passados_a_manter)
     cutoff_iso = cutoff.isoformat()
 
     resp = (
         supabase.table("eventos")
         .delete()
-        .lt("data_extracao", cutoff_iso)
+        .lt("data_inicio", cutoff_iso)
         .execute()
     )
 

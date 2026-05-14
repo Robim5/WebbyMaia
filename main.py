@@ -1,11 +1,11 @@
 from __future__ import annotations
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from scraper.fetch import fetch_html
 from scraper.main_agenda import carregar_titulos_principais, marcar_evento_principal
 from scraper.parse import parse_evento_html
 from scraper.source import recolher_urls_eventos
-from db.supabase_client import limpar_eventos_antigos, upsert_eventos
+from db.supabase_client import add_calendar_months, limpar_eventos_antigos, upsert_eventos
 from web.app import app 
 from scraper.news.source import recolher_noticias_recentes
 from db.supabase_client import sincronizar_noticias
@@ -40,9 +40,9 @@ def main() -> None:
 
     hoje = date.today()
     # nao procuramos eventos passados
-    # busca eventos de agora até +2 meses, mantem 2 meses e depois limpa
+    # busca eventos de agora até +4 meses (calendário) e faz limpeza na BD por data_inicio (ver limpar_eventos_antigos)
     janela_inicio = hoje
-    janela_fim = hoje + timedelta(days=60)  # 2 meses frente
+    janela_fim = add_calendar_months(hoje, 4)
     print(f"Janela de datas: {janela_inicio.isoformat()} -> {janela_fim.isoformat()}")
 
     # a fonte principal é a API do calendário (muito mais completa que o HTML estático)
@@ -74,7 +74,7 @@ def main() -> None:
         enviados = upsert_eventos(eventos, on_conflict="url_evento")
         print(f"Upsert concluído. Eventos enviados: {enviados}")
 
-        apagados = limpar_eventos_antigos(retention_days=60)
+        apagados = limpar_eventos_antigos()
         print(f"Auto-limpeza concluída. Eventos apagados: {apagados}")
     except Exception as erro:
         print(f"Upsert ignorado (falta de .env/vars no Railway secalhar): {erro}")
